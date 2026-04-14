@@ -13,8 +13,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import UserProfile, Movie
 from app.forms import LoginForm, MovieForm
 from flask import send_from_directory
-from is_safe_url import is_safe_url
+from urllib.parse import urlparse, urljoin
 import os
+
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
 
 ###
@@ -43,7 +49,7 @@ def login():
                 flash('Logged in successfully.', 'success')
                 next_page = request.args.get('next')
 
-                if not is_safe_url(next_page, request.host):
+                if not is_safe_url(next_page):
                     return abort(400)
                 return redirect(next_page or url_for('home'))
             else:
@@ -124,7 +130,7 @@ def add_header(response):
     to we could change max-age to 600 seconds which would be 10 minutes.
     """
     response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    response.headers['Cache-Control'] = 'public, max-age=0'
+    response.headers['Cache-Control'] = 'public, max-age=600'
     return response
 
 
