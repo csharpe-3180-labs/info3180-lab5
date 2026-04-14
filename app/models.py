@@ -10,13 +10,14 @@ class UserProfile(db.Model):
     first_name = db.Column(db.String(80))
     last_name = db.Column(db.String(80))
     username = db.Column(db.String(80), unique=True)
-    password = db.Column(db.String(256))
+    password = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     def __init__(self, first_name, last_name, username, password):
         self.first_name = first_name
         self.last_name = last_name
         self.username = username
-        self.password = generate_password_hash(password)
+        self.password = generate_password_hash(password, method='pbkdf2:sha256')
 
     def is_authenticated(self):
         return True
@@ -41,7 +42,7 @@ class UserProfile(db.Model):
 def update_user_password(username, new_password):
     user = UserProfile.query.filter_by(username=username).first()
     if user:
-        user.password = generate_password_hash(new_password)
+        user.password = generate_password_hash(new_password, method='pbkdf2:sha256')
         db.session.commit()
         return True
     return False
@@ -53,4 +54,4 @@ class Movie(db.Model):
 	title = db.Column(db.String(255), nullable=False)
 	description = db.Column(db.Text, nullable=False)
 	poster = db.Column(db.String(255), nullable=False)
-	created_at = db.Column(db.DateTime, default=datetime.utcnow)
+	created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
