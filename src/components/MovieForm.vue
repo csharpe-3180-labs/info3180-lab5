@@ -1,5 +1,5 @@
 <template>
-  <form @submit.prevent="saveMovie" enctype="multipart/form-data">
+  <form id="movieForm" @submit.prevent="saveMovie" enctype="multipart/form-data">
     <div class="form-group mb-3">
       <label for="title" class="form-label">Movie Title</label>
       <input type="text" id="title" name="title" v-model="title" class="form-control" />
@@ -30,13 +30,27 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const title = ref('')
 const description = ref('')
 const poster = ref(null)
 const errors = ref([])
 const successMessage = ref('')
+const csrf_token = ref('')
+
+onMounted(() => {
+  getCsrfToken()
+})
+
+function getCsrfToken() {
+  fetch('/api/v1/csrf-token')
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(data)
+      csrf_token.value = data.csrf_token
+    })
+}
 
 function onFileChange(event) {
   poster.value = event.target.files[0]
@@ -46,26 +60,25 @@ function saveMovie() {
   errors.value = []
   successMessage.value = ''
 
-  const formData = new FormData()
-  formData.append('title', title.value)
-  formData.append('description', description.value)
-  if (poster.value) {
-    formData.append('poster', poster.value)
-  }
+  let movieForm = document.getElementById('movieForm')
+  let form_data = new FormData(movieForm)
 
   fetch('/api/v1/movies', {
     method: 'POST',
-    body: formData
+    body: form_data,
+    headers: {
+      'X-CSRFToken': csrf_token.value
+    }
   })
     .then(function (response) {
       return response.json()
     })
     .then(function (data) {
+      console.log(data)
       if (data.errors) {
         errors.value = data.errors
       } else {
         successMessage.value = data.message
-        console.log(data)
       }
     })
     .catch(function (error) {

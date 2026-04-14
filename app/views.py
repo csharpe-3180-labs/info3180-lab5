@@ -8,6 +8,7 @@ This file creates your application.
 from app import app, db, login_manager
 from flask import render_template, request, jsonify, send_file, redirect, url_for, flash, session, abort
 from flask_login import login_user, logout_user, current_user, login_required
+from flask_wtf.csrf import generate_csrf
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import UserProfile, Movie
@@ -31,46 +32,13 @@ def is_safe_url(target):
 def index():
     return jsonify(message="This is the beginning of our API")
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('secure_page'))
-    form = LoginForm()
-    if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        user = db.session.execute(db.select(UserProfile).filter_by(username=username)).scalar()
-        if user is not None and check_password_hash(user.password, password):
-            remeber_me = False
+@app.route('/api/v1/csrf-token', methods=['GET'])
+def get_csrf():
+    return jsonify({'csrf_token': generate_csrf()})
 
-            if 'remeber_me' in request.form:
-                remeber_me = True
-                login_user(user, remember=remeber_me)
-                flash('Logged in successfully.', 'success')
-                next_page = request.args.get('next')
 
-                if not is_safe_url(next_page):
-                    return abort(400)
-                return redirect(next_page or url_for('home'))
-            else:
-                flash('Username or Password is incorrect.', 'danger')
-
-            flash_errors(form)
-            return render_template('login.html', form=form)
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
-
-@login_manager.user_loader
-def load_user(id):
-    return db.session.execute(db.select(UserProfile).filter_by(id=id)).scalar()
 
 @app.route('/api/v1/movies', methods=['POST'])
-@login_required
 def movies():
     form = MovieForm()
     if form.validate_on_submit():
@@ -79,7 +47,7 @@ def movies():
         poster_file = form.poster.data
 
         filename = secure_filename(poster_file.filename)
-        upload_folder = app.config.get('UPLOAD_FOLDER')
+        upload_folder = app.config.get('UPLOAD_FOLDER') or 'uploads'
         os.makedirs(upload_folder, exist_ok=True)
         poster_file.save(os.path.join(upload_folder, filename))
 
@@ -95,6 +63,26 @@ def movies():
         }), 201
 
     return jsonify({'errors': form_errors(form)}), 400
+
+@app.route('/api/v1/movies', methods=['GET'])
+def get_movies():
+    movies = db.session.execute(db.select(Movie)).scalars().all()
+    movie_list = [
+        {
+            'id': m.id,
+            'title': m.title,
+            'description': m.description,
+            'poster': f'/api/v1/posters/{m.poster}'
+        } for m in movies
+    ]
+    return jsonify({'movies': movie_list})
+
+@app.route('/api/v1/posters/<filename>', methods=['GET'])
+def get_poster(filename):
+    return send_from_directory(
+        os.path.join(os.getcwd(), app.config.get('UPLOAD_FOLDER', 'uploads')),
+        filename
+    )
 
 ###
 # The functions below should be applicable to all Flask apps.
@@ -138,3 +126,4 @@ def add_header(response):
 def page_not_found(error):
     """Custom 404 page."""
     return render_template('404.html'), 404
+
