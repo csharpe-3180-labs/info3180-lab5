@@ -58,7 +58,7 @@ def login():
             flash_errors(form)
             return render_template('login.html', form=form)
 
-@app.route('logout')
+@app.route('/logout')
 @login_required
 def logout():
     logout_user()
