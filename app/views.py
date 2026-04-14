@@ -8,7 +8,7 @@ This file creates your application.
 from app import app, db, login_manager
 from flask import render_template, request, jsonify, send_file, redirect, url_for, flash, session, abort
 from flask_login import login_user, logout_user, current_user, login_required
-from flask_wtf.csrf import generate_csrf
+from flask_wtf.csrf import generate_csrf, CSRFError
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import UserProfile, Movie
@@ -121,6 +121,10 @@ def add_header(response):
     response.headers['Cache-Control'] = 'public, max-age=600'
     return response
 
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return jsonify({'errors': [str(e.description)]}), 400
 
 @app.errorhandler(404)
 def page_not_found(error):

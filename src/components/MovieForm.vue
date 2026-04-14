@@ -71,18 +71,25 @@ function saveMovie() {
     }
   })
     .then(function (response) {
-      return response.json()
+      return response.json().then(function (data) {
+        return { status: response.status, body: data }
+      })
     })
-    .then(function (data) {
-      console.log(data)
-      if (data.errors) {
-        errors.value = data.errors
-      } else {
-        successMessage.value = data.message
+    .then(function ({ status, body }) {
+      console.log(status, body)
+      if (body.errors) {
+        errors.value = body.errors
+      } else if (body.message) {
+        successMessage.value = body.message
+        title.value = ''
+        description.value = ''
+        poster.value = null
+        movieForm.reset()
       }
     })
     .catch(function (error) {
-      console.log(error)
+      console.error(error)
+      errors.value = ['An unexpected error occurred. Please try again.']
     })
 }
 </script>
