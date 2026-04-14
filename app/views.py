@@ -5,8 +5,14 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, jsonify, send_file
+from app import app, db, login_manager
+from flask import render_template, request, jsonify, send_file, redirect, url_for, flash, session, abort
+from flask_login import login_user, logout_user, current_user, login_required
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from app.models import UserProfile
+from app.forms import LoginForm, MovieForm
+from flask import send_from_directory
 import os
 
 
@@ -18,6 +24,15 @@ import os
 def index():
     return jsonify(message="This is the beginning of our API")
 
+@app.route('/api/movies', methods=['POST'])
+@login_required
+def movies():
+    movies_list =[]
+    with open('movies.csv') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            movies_list.append(row)
+    return jsonify(movies_list)
 
 ###
 # The functions below should be applicable to all Flask apps.
